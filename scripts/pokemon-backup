@@ -1,0 +1,105 @@
+#!/bin/bash
+# Pokémon save backup script with timestamped copies
+# Works for GB/GBA, NDS/DS, 3DS (Azahar), and GameCube saves
+# Void Linux setup
+
+shopt -s nocaseglob nullglob
+
+REPO_DIR="$HOME/Documents/Pokemon/save-backup"
+TIMESTAMP=$(date +%d%m%Y%H%M)
+
+# --- Helper function to copy only if changed ---
+copy_if_changed() {
+    local src="$1"
+    local dest_dir="$2"
+    local game="$3"
+
+    # Skip if source doesn't exist or is a directory
+    [ ! -f "$src" ] && return
+
+    mkdir -p "$dest_dir"
+    latest_backup=$(ls -1t "$dest_dir"/*.sav 2>/dev/null | head -n1)
+
+    if [ -z "$latest_backup" ] || ! cmp -s "$src" "$latest_backup"; then
+        DEST="$dest_dir/${TIMESTAMP}.sav"
+        cp "$src" "$DEST"
+        echo "✅ Copied $game save → $DEST"
+    else
+        echo "⚡ $dest_dir save unchanged, skipping."
+    fi
+}
+
+# --- Gameboy / GBA saves ---
+declare -A GB_SAVES=(
+    ["red"]="$HOME/Documents/Pokemon/Gameboy/Saves/*red*.sav"
+    ["blue"]="$HOME/Documents/Pokemon/Gameboy/Saves/*blue*.sav"
+    ["yellow"]="$HOME/Documents/Pokemon/Gameboy/Saves/*yellow*.sav"
+    ["gold"]="$HOME/Documents/Pokemon/Gameboy/Saves/*gold*.sav"
+    ["silver"]="$HOME/Documents/Pokemon/Gameboy/Saves/*silver*.sav"
+    ["crystal"]="$HOME/Documents/Pokemon/Gameboy/Saves/*crystal*.sav"
+    ["ruby"]="$HOME/Documents/Pokemon/Gameboy/Saves/*ruby*.sav"
+    ["sapphire"]="$HOME/Documents/Pokemon/Gameboy/Saves/*sapphire*.sav"
+    ["emerald"]="$HOME/Documents/Pokemon/Gameboy/Saves/*pokemon*emerald*.sav"
+    ["fire-red"]="$HOME/Documents/Pokemon/Gameboy/Saves/*fire*.sav"
+    ["leaf-green"]="$HOME/Documents/Pokemon/Gameboy/Saves/*leaf*.sav"
+)
+
+# --- NDS / DS / 3DS saves ---
+declare -A NDS_SAVES=(
+    ["diamond"]="$HOME/Documents/Pokemon/NDS-Pokemon/Saves/*Diamond*.sav"
+    ["pearl"]="$HOME/Documents/Pokemon/NDS-Pokemon/Saves/*Pearl*.sav"
+    ["platinum"]="$HOME/Documents/Pokemon/NDS-Pokemon/Saves/*Platinum*.sav"
+    ["heart-gold"]="$HOME/Documents/Pokemon/NDS-Pokemon/Saves/*HeartGold*.sav"
+    ["soul-silver"]="$HOME/Documents/Pokemon/NDS-Pokemon/Saves/*SoulSilver*.sav"
+    ["black"]="$HOME/Documents/Pokemon/NDS-Pokemon/Saves/Pokemon-Black-Version.sav"
+    ["white"]="$HOME/Documents/Pokemon/NDS-Pokemon/Saves/Pokemon-White-Version.sav"
+    ["black-2"]="$HOME/Documents/Pokemon/NDS-Pokemon/Saves/Black Version 2.sav"
+    ["white-2"]="$HOME/Documents/Pokemon/NDS-Pokemon/Saves/Pokemon-White-Version-2.sav"
+
+    # Azahar (3DS)
+    ["x"]="$HOME/.local/share/azahar-emu/sdmc/Nintendo 3DS/00000000000000000000000000000000/00000000000000000000000000000000/title/00040000/00055d00/data/00000001/main"
+    ["y"]="$HOME/.local/share/azahar-emu/sdmc/Nintendo 3DS/00000000000000000000000000000000/00000000000000000000000000000000/title/00040000/00055e00/data/00000001/main"
+    ["omega-ruby"]="$HOME/.local/share/azahar-emu/sdmc/Nintendo 3DS/00000000000000000000000000000000/00000000000000000000000000000000/title/00040000/0011c400/data/00000001/main"
+    ["alpha-sapphire"]="$HOME/.local/share/azahar-emu/sdmc/Nintendo 3DS/00000000000000000000000000000000/00000000000000000000000000000000/title/00040000/0011c500/data/00000001/main"
+    ["sun"]="$HOME/.local/share/azahar-emu/sdmc/Nintendo 3DS/00000000000000000000000000000000/00000000000000000000000000000000/title/00040000/00164800/data/00000001/main"
+    ["moon"]="$HOME/.local/share/azahar-emu/sdmc/Nintendo 3DS/00000000000000000000000000000000/00000000000000000000000000000000/title/00040000/00175e00/data/00000001/main"
+    ["ultra-sun"]="$HOME/.local/share/azahar-emu/sdmc/Nintendo 3DS/00000000000000000000000000000000/00000000000000000000000000000000/title/00040000/001b5000/data/00000001/main"
+    ["ultra-moon"]="$HOME/.local/share/azahar-emu/sdmc/Nintendo 3DS/00000000000000000000000000000000/00000000000000000000000000000000/title/00040000/001b5100/data/00000001/main"
+)
+
+# --- GameCube saves ---
+declare -A GC_SAVES=(
+    ["colosseum"]="$HOME/.local/share/dolphin-emu/GC/USA/Card A/01-GC6E-pokemon_colosseum.gci"
+    ["xd-gale-of-darkness"]="$HOME/.local/share/dolphin-emu/GC/EUR/Card A/01-GXXP-PokemonXD.gci"
+)
+
+# --- Copy GB/GBA saves ---
+for game in "${!GB_SAVES[@]}"; do
+    for file in ${GB_SAVES[$game]}; do
+        copy_if_changed "$file" "$REPO_DIR/$game" "$game"
+    done
+done
+
+# --- Copy NDS/3DS saves ---
+for game in "${!NDS_SAVES[@]}"; do
+    copy_if_changed "${NDS_SAVES[$game]}" "$REPO_DIR/$game" "$game"
+done
+
+# --- Copy GameCube saves ---
+for game in "${!GC_SAVES[@]}"; do
+    copy_if_changed "${GC_SAVES[$game]}" "$REPO_DIR/$game" "$game"
+done
+
+# --- Git commit & push ---
+cd "$REPO_DIR" || { echo "❌ Repo not found at $REPO_DIR"; exit 1; }
+git add .
+
+if git diff --cached --quiet; then
+    echo "✅ No changes to commit."
+else
+    COMMIT_MSG="Update saves $TIMESTAMP"
+    git commit -m "$COMMIT_MSG"
+    git push origin main
+    echo "🚀 Changes pushed with commit: $COMMIT_MSG"
+fi
+
