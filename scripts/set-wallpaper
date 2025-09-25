@@ -1,0 +1,5 @@
+#!/bin/bash
+# Script to set a random wallpaper using feh
+
+feh --bg-fill --randomize ~/Pictures/wallpaper/*.png
+

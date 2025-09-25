@@ -1,0 +1,15 @@
+#!/bin/sh
+
+choice=$(printf " Lock\n󰤄 Logout\n Suspend\n Reboot\n Shutdown" | \
+    dmenu -fn "UbuntuMono Nerd Font:size=14" \
+          -nb "#282a36" -nf "#f8f8f2" \
+          -sb "#bd93f9" -sf "#282a36")
+
+case "$choice" in
+    " Lock") slock ;;
+    "󰤄 Logout") pkill -KILL -u "$USER" ;;
+    " Suspend") loginctl suspend ;;
+    " Reboot") loginctl reboot ;;
+    " Shutdown") loginctl poweroff ;;
+esac
+
