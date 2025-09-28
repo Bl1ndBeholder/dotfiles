@@ -18,14 +18,32 @@ copy_if_changed() {
     [ ! -f "$src" ] && return
 
     mkdir -p "$dest_dir"
-    latest_backup=$(ls -1t "$dest_dir"/*.sav 2>/dev/null | head -n1)
 
+    # Determine extension
+    local ext=""
+    local base="$(basename "$src")"
+
+    if [[ "$base" == "main" ]]; then
+        ext=""   # 3DS saves → no extension
+    else
+        ext="${base##*.}"   # Keep original extension (sav, gci, etc.)
+    fi
+
+    # Find latest backup
+    if [ -n "$ext" ]; then
+        latest_backup=$(ls -1t "$dest_dir"/*."$ext" 2>/dev/null | head -n1)
+        DEST="$dest_dir/${TIMESTAMP}.$ext"
+    else
+        latest_backup=$(ls -1t "$dest_dir"/* 2>/dev/null | head -n1)
+        DEST="$dest_dir/${TIMESTAMP}"
+    fi
+
+    # Only copy if changed
     if [ -z "$latest_backup" ] || ! cmp -s "$src" "$latest_backup"; then
-        DEST="$dest_dir/${TIMESTAMP}.sav"
         cp "$src" "$DEST"
         echo "✅ Copied $game save → $DEST"
     else
-        echo "⚡ $dest_dir save unchanged, skipping."
+        echo "⚡ $game save unchanged, skipping."
     fi
 }
 
@@ -93,13 +111,16 @@ done
 # --- Git commit & push ---
 cd "$REPO_DIR" || { echo "❌ Repo not found at $REPO_DIR"; exit 1; }
 git add .
-
 if git diff --cached --quiet; then
     echo "✅ No changes to commit."
 else
     COMMIT_MSG="Update saves $TIMESTAMP"
     git commit -m "$COMMIT_MSG"
+
+    # Always rebase before pushing to avoid rejection
+    git pull --rebase origin main || true
     git push origin main
+
     echo "🚀 Changes pushed with commit: $COMMIT_MSG"
 fi
 
