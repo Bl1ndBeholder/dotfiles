@@ -1,0 +1,35 @@
+#!/bin/sh
+
+# Ensure ~/.local/bin is in PATH
+export PATH="$HOME/.local/bin:$PATH"
+ulimit -c 0
+
+# --- Kill leftover PipeWire daemons from previous sessions ---
+for proc in pipewire pipewire-pulse wireplumber; do
+    for pid in $(pgrep -x "$proc"); do
+        kill "$pid" 2>/dev/null
+    done
+done
+
+# --- Start fresh PipeWire stack ---
+pipewire &
+
+# --- Autostarts ---
+~/.dwm-status.sh &
+xss-lock --transfer-sleep-lock -- slock &
+/usr/libexec/xdg-desktop-portal &
+/usr/libexec/xdg-desktop-portal-gtk &
+picom -b &
+/usr/libexec/gvfs-udisks2-volume-monitor &
+/usr/libexec/polkit-gnome-authentication-agent-1 &
+#~/.fehbg &
+feh --bg-fill --randomize ~/Pictures/wallpaper/*.png
+nm-applet --indicator &
+blueman-applet &
+caffeine &
+
+# --- DPMS / Screen blanking ---
+xset s 600
+xset +dpms
+xset dpms 0 0 900
+
