@@ -8,6 +8,13 @@ shopt -s nocaseglob nullglob
 REPO_DIR="$HOME/Documents/Pokemon/save-backup"
 TIMESTAMP=$(date +%d%m%Y%H%M)
 
+# --- 0️⃣ Pull latest repo changes before backup ---
+cd "$REPO_DIR" || { echo "❌ Repo not found at $REPO_DIR"; exit 1; }
+echo "🔄 Pulling latest saves from GitHub..."
+git fetch origin
+git merge --ff-only origin/main || echo "⚠️ Already up-to-date or merge failed."
+
+# --- 1️⃣ Core backup section (UNCHANGED) ---
 # --- Helper function to copy only if changed ---
 copy_if_changed() {
     local src="$1"
@@ -116,11 +123,8 @@ if git diff --cached --quiet; then
 else
     COMMIT_MSG="Update saves $TIMESTAMP"
     git commit -m "$COMMIT_MSG"
-
-    # Always rebase before pushing to avoid rejection
     git pull --rebase origin main || true
     git push origin main
-
     echo "🚀 Changes pushed with commit: $COMMIT_MSG"
 fi
 
