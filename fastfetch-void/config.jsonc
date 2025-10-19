@@ -89,17 +89,12 @@
         },
         "break",
         {
-            "type": "de",
+            "type": "wm",
             "key": " DE",
             "keyColor": "blue"
         },
         {
             "type": "lm",
-            "key": "│ ├",
-            "keyColor": "blue"
-        },
-        {
-            "type": "wm",
             "key": "│ ├",
             "keyColor": "blue"
         },
